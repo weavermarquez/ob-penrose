@@ -1,0 +1,94 @@
+#+title: Readme
+
+* Introduction
+*WARNING: This package is in early development!*
+=ob-penrose= provides Org-Babel integration for [[https://github.com/penrose/penrose][Penrose]]. My goal with =ob-penrose= is to create a convenient and expressive interface for people interested in writing diagram-dense material, especially in the literate programming style.
+
+#+begin_quote
+Penrose is a platform that enables people to *create beautiful diagrams just by typing notation in plain text.* The goal is to make it easy for non-experts to create and explore high-quality diagrams and provide deeper insight into challenging technical concepts. We aim to democratize the process of creating visual intuition.
+#+end_quote
+
+* Installation
+This package is *not* yet on MELPA.
+
+Steps
+- Install Penrose's CLI =roger=.  See [[https://penrose.cs.cmu.edu/docs/ref/using#installation][Penrose documentation]].
+Shell
+#+begin_src shell
+npm install -g @penrose/roger
+#+end_src
+
+- Install =ob-penrose=. Steps for Doom Emacs:
+In =package.el=
+#+begin_src emacs-lisp
+(package! ob-penrose :recipe (:host github :repo "weavermarquez/ob-penrose" :files ("ob-penrose.el")))
+#+end_src
+
+In =config.el=
+#+begin_src emacs-lisp
+(use-package! ob-penrose :after org :defer t)
+#+end_src
+
+You're now ready to use =ob-penrose=!
+
+* Usage
+Using the files from Penrose's [[https://penrose.cs.cmu.edu/try/?examples=set-theory-domain/tree-venn][Set Theory / Venn Diagram example]]:
+- create =venn.domain= and =venn.style= in or under your current working directory.
+  - /In this repo, the =demo= folder has these files already./
+
+In an Org Mode file, create a code block like so, then press =Ctrl-C= to execute the block.
+#+begin_example
+,#+begin_src penrose :file owo.svg :domain demo/venn.domain :style demo/venn.style
+Set A, B, C, D, E, F, G
+
+IsSubset(B, A)
+IsSubset(C, A)
+IsSubset(D, B)
+IsSubset(E, B)
+IsSubset(F, C)
+IsSubset(G, C)
+
+Not(Intersecting(E, D))
+Not(Intersecting(F, G))
+Not(Intersecting(B, C))
+
+AutoLabel All
+,#+end_src
+#+end_example
+* Project Roadmap
+** Hotfixes
+- Add Documentation for Non-Doom Emacs
+** Features for v0.2 / v0.3
+- Draw Inspiration from
+  - =org-download=
+  - =ob-plantuml=
+- Variables for automatic SVG size / resizing inside org buffer
+- Option to transform to PNG
+- Integrate penrose emacs modes for writing.
+- Integrate with =org-special-blocks-extra=?
+- delete edebug info in Commentary
+- define file extensions in [[FileExts]]
+- Identify how org variables might be used with Penrose
+** Hopeful Features:
+- Users can intersperse pieces of Substance, Style, and Domain code.
+  - When users execute on a source block, they have the option of either drawing from the entire set of blocks within a scope or only from blocks defined /above/.
+  - A scope of blocks can span multiple files.
+  - A scope of blocks can have complex dependency relations, esp. for inheritance.
+  - Potential mechanisms:
+    - INCLUDE in Org Key Words (per buffer or per subtree); =:session=; =noweb=; named references to source blocks; emacs lisp data representations
+- Users can create "small multiple" diagrams (i.e., create a number of diagrams with different variations)
+  - =roger trios= has a potential synergy with data features (e.g. Table variables)
+- Users can invoke built-in, general-purpose Domains and Styles instead of providing their own files.
+  - Defined through Emacs Lisp in =ob-penrose=?
+- Org Export (HTML, LaTeX) are adjusted to be appropriate for the backend.
+  - HTML could invoke the JS libraries provided by Penrose
+  - LaTeX uses the =roger= flag for TeX svgs.
+- Fill out FSF copyright assignment to add to core org-babel https://orgmode.org/request-assign-future.txt
+
+Other Notes
+- For local development... if I'm not using doom =package!=, then:
+  - eval buffer
+  - [[elisp:(add-to-list 'org-babel-load-languages '(penrose . t))]] to register to org-babel
+** Some complementary packages on the way
+- =ob-clingo= / =ob-asp= for Answer Set Programming
+- =penrose-mode= ...?

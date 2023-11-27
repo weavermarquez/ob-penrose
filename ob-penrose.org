@@ -245,39 +245,3 @@ AutoLabel All
 #+RESULTS:
 [[file:owo.svg]]
 
-* PROJ ob-penrose v0.2
-Draw Inspiration from
-- =org-download=
-- =ob-plantuml=
-
-Low Hanging Fruit for v0.2
-- Variables for automatic SVG size / resizing inside org buffer
-- Option to transform to PNG
-- Integrate penrose emacs modes for writing.
-- Integrate with =org-special-blocks-extra=?
-- delete edebug info in Commentary
-- define file extensions in [[FileExts]]
-- Identify how org variables might be used with Penrose
-
-Hopeful Features:
-- Users can intersperse pieces of Substance, Style, and Domain code.
-  - When users execute on a source block, they have the option of either drawing from the entire set of blocks within a scope or only from blocks defined /above/.
-  - A scope of blocks can span multiple files.
-  - A scope of blocks can have complex dependency relations, esp. for inheritance.
-  - Potential mechanisms:
-    - INCLUDE in Org Key Words (per buffer or per subtree); =:session=; =noweb=; named references to source blocks; emacs lisp data representations
-- Users can create "small multiple" diagrams (i.e., create a number of diagrams with different variations)
-  - =roger trios= has a potential synergy with data features (e.g. Table variables)
-- Users can invoke built-in, general-purpose Domains and Styles instead of providing their own files.
-  - Defined through Emacs Lisp in =ob-penrose=?
-- Org Export (HTML, LaTeX) are adjusted to be appropriate for the backend.
-  - HTML could invoke the JS libraries provided by Penrose
-  - LaTeX uses the =roger= flag for TeX svgs.
-- Fill out FSF copyright assignment to add to core org-babel https://orgmode.org/request-assign-future.txt
-
-Other Notes
-- For local development... if I'm not using doom =package!=, then:
-  - eval buffer
-  - [[elisp:(add-to-list 'org-babel-load-languages '(penrose . t))]] to register to org-babel
-
-
