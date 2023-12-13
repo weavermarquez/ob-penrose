@@ -225,6 +225,8 @@ Header Args:
 Content:
 - Substance code
 
+[[elisp:(add-to-list 'org-babel-load-languages '(penrose . t))]]
+
 #+begin_src penrose :file owo.svg :domain demo/venn.domain :style demo/venn.style
 Set A, B, C, D, E, F, G
 
@@ -241,7 +243,6 @@ Not(Intersecting(B, C))
 
 AutoLabel All
 #+end_src
-
-#+RESULTS:
-[[file:owo.svg]]
-
+* COMMENT How I'll implement Interspersed files
+- switch babel-execute to using .json file
+- compile / concatenate source blocks into temp files that will then be pointed to inside the json file.

@@ -1,0 +1,83 @@
+#+title: Laws Of Form
+* LoF in Penrose
+
+
+#+begin_src penrose-dsl
+type Boundary
+predicate Containment(Boundary object, Boundary environment)
+predicate Not(Prop p1)
+predicate Intersecting(Boundary s1, Boundary s2)
+predicate IsSubset(Boundary s1, Boundary s2)
+#+end_src
+#+begin_src penrose-style
+canvas {
+  width = 800
+  height = 800
+}
+
+forall Boundary x {
+    x.shape = Circle {
+        strokeWidth : 0.
+    }
+/*
+    x.shading = Image {
+        center : x.shape.center
+        width : x.shape.r * 2.0
+        height : x.shape.r * 2.0
+        --href : "shading.svg"
+    }
+
+
+    x.shadow = Image {
+        width : x.shape.r * 2.15
+        height : x.shape.r * 2.22
+        --center : (x.shape.center[0] + 0.03 * x.shading.width, x.shape.center[1])
+    }
+*/
+    x.text = Equation {
+        string : x.label
+        fillColor: rgba(1.0, 1.0, 1.0, 1.0)
+        width: 0.4 * x.shape.r
+        height: 0.4 * x.shape.r
+    }
+
+    ensure contains(x.shape, x.text)
+    ensure lessThan(20, x.shape.r)
+    encourage sameCenter(x.text, x.shape)
+
+    x.shape below x.text
+    --x.shading below x.shape
+    --x.shadow below x.shading
+}
+
+forall Boundary x; Boundary y
+where Containment(x, y) {
+    ensure disjoint(y.text, x.shape, 5.0)
+    ensure contains(y.shape, x.shape, 5.0)
+    x.shape above y.shape
+    y.text below x.shape
+    --x.shadow above y.shape
+}
+
+forall Boundary x; Boundary y
+where Not(Intersecting(x, y)) {
+    ensure disjoint(x.shape, y.shape)
+}
+
+forall Boundary x; Boundary y
+where Intersecting(x, y) {
+    ensure overlapping(x.shape, y.shape)
+    ensure disjoint(y.text, x.shape)
+    ensure disjoint(x.text, y.shape)
+}
+#+end_src
+#+begin_src penrose-substance
+Boundary a, b
+Containment(a, b)
+
+AutoLabel All
+#+end_src
+* Tailoring Penrose Domains to my needs
+[[https://penrose.cs.cmu.edu/blog/tailoring-graph-domain][Tutorial]]
+
+We're recreating the =hamiltonian cycle= domain. Taking a regular Directed Graph and turning it into a Highlighted Graph domain.

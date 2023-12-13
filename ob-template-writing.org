@@ -1,0 +1,370 @@
+#+title: Ob Template
+[[https://orgmode.org/worg/org-contrib/babel/languages/index.html#configure][Worg Authoring]]
+[[https://orgmode.org/worg/org-contrib/babel/][Worg Babel Intro]]
+* Some additional comments/development tips
+Although most of the instructions in ob-template.el should be useful, and explain clearly how to use the code, some explanations for more advanced functionalities could be a little outdated (contributions are very welcome. The thread here may contain some extra useful information, although most of the suggestions provided by Eric should have been implemented). If some of the instructions seem clear, then here are some suggestions to gain clarity:
+
+start with instrumenting see edebug the org-babel-execute:template function, and subsequently evaluate some test-code block. In this way you can easily figure out how Babel processes header arguments. Then in the end, the result printed by a code block simply consists of the output of that function.
+The trick is to process the vars, result-params, and the full-body variable (let form within org-babel-execute:template function) and send the appropriate lines to some inferior process (or as an argument to some shell command). The inferior process can be created in the function org-babel-template-initiate-session. The result returned by the inferior process (or by the shell command), should be returned by org-babel-execute:template (of course you might further process it before you return it).
+Don't forget to read the comments in the ob-template file, e.g. for sending/receiving output to/from an inferior process. The functions in org-babel-comint might also be useful
+* Check out [[https://orgmode.org/worg/org-contrib/babel/intro.html#library-of-babel][Library of Babel]] [[file:library-of-babel.org][local version here]]
+and here; http://eschulte.github.io/org-scraps/
+* =ob-penrose.el=
+** =roger trio=
+roger trio
+
+roger
+trio =$example.json=
+--out =:file foo=
+
+minimal call
+- .trio file (source block?)
+  - in json file, style must be an array.
+- output
+- location to =roger=
+
+later
+- variation
+- triplet of files
+
+
+- --trio ::
+  - three files with .style .substance .domain, any order.
+  - *OR* a JSON file that links to them, which can also contain the variation.
+- --out :: always svg regardless of file extension.
+- --path :: location of the trio files.
+- --tex-labels :: Only relevant if exporting to TeX.
+- --variation :: seed string... No strings necessary, but also works with string.
+#+begin_example
+roger trio [trio..]
+Generate a diagram from a Penrose trio.
+
+Options:
+      --version     Show version number                                [boolean]
+      --help        Show help                                          [boolean]
+      --trio        Three files pointing to a Penrose trio or a JSON file that l
+                    inks to them.                             [array] [required]
+  -o, --out         Name of the output SVG file.                        [string]
+  -p, --path        A common path prefix for the trio files       [default: "."]
+      --tex-labels  Render Equation shapes as plain TeX strings in the output SV
+                    G                                 [boolean] [default: false]
+  -v, --variation   Variation for the Penrose diagram                   [string]
+
+Missing required argument: trio
+[ Babel evaluation exited with code 0 ]
+#+end_example
+#+begin_example example of json file
+{
+  "substance": "./tree.substance",
+  "style": ["./venn.style"],
+  "domain": "./setTheory.domain",
+  "variation": "PlumvilleCapybara104"
+}
+#+end_example
+** =roger trios=
+Multiple .json files. This could be good for generating multiple /different/ diagrams with different variations, if I want to create them through json files
+
+- --trios :: list of .json files
+- --out :: location of resultant svg files.
+#+begin_example
+roger trios [trios..]
+Create diagrams from multiple .trio.json files.
+
+Options:
+      --version     Show version number                                [boolean]
+      --help        Show help                                          [boolean]
+      --trios       Any number of .trio.json files of Penrose trios.
+                                                              [array] [required]
+      --tex-labels  Render Equation shapes as plain TeX strings in the output SV
+                    G                                 [boolean] [default: false]
+  -o, --out         Output folder containing the SVG files   [string] [required]
+
+Missing required arguments: trios, out
+#+end_example
+
+** varlist
+#+NAME:VARLIST
+#+begin_src elisp
+(trio-config-file (cdr (assoc :trio-config-file params)))
+(temp-file (org-babel-temp-file "penrose-"))
+(roger (or ob-mermaid-cli-path
+        (executable-find "roger")
+        (error "`ob-penrose-cli-path' is not set and roger is not in `exec-path'")))
+
+
+#+end_src
+* Modifying [[file:penrose-modes.el][penrose-modes.el]]
+Penrose Modes are implemented as generic modes because they are very small DSLs.
+The major definitions have been taken care of.
+
+The main trick is to figure out how to get the syntax highlighitng working for several different modes.
+a. Define 3 separate blocks?
+b. Define 1 block, but different highlighting based on some sort of flag/trigger?
+
+* Dissecting =ob-mermaid.el=
+#+NAME: mmDependencies
+#+begin_src elisp
+(require 'ob)
+(require 'ob-eval)
+#+end_src
+#+NAME: mmDefaults
+#+begin_src elisp
+(defvar org-babel-default-header-args:mermaid
+  '((:results . "file") (:exports . "results"))
+  "Default arguments for evaluatiing a mermaid source block.")
+
+(defcustom ob-mermaid-cli-path nil
+  "Path to mermaid.cli executable."
+  :group 'org-babel
+  :type 'string)
+#+end_src
+- Set Default Header Args
+- Set CLI Path executable variable.
+#+NAME: mmMain
+#+begin_src elisp
+(defun org-babel-execute:mermaid (body params)
+  (let* ((out-file (or (cdr (assoc :file params))
+                       (error "mermaid requires a \":file\" header argument")))
+	 (theme (cdr (assoc :theme params)))
+	 (width (cdr (assoc :width params)))
+	 (height (cdr (assoc :height params)))
+	 (background-color (cdr (assoc :background-color params)))
+	 (mermaid-config-file (cdr (assoc :mermaid-config-file params)))
+	 (css-file (cdr (assoc :css-file params)))
+#+end_src
+- defun babel-execute is called with =C-c= (body params)
+declare variables...
+- out-file :: either =:file filename= or call ~error~
+- theme, width, height, background-color, mermaid-config-file, puppetteer-config-file...
+then,  also define...
+- temp-file is =(temp-file (org-babel-temp-file "template-"))=
+- the executable mmdc is either
+  - preset variable
+  - ~executable-find~
+  - or error
+(or executes sequentially until non-nil)
+
+header arg to assoc list idiom
+: (let* (
+: (my-variable (cdr (assoc :my-variable params)))
+: ))
+
+#+begin_src elisp
+(pupeteer-config-file (cdr (assoc :pupeteer-config-file params)))
+(temp-file (org-babel-temp-file "mermaid-"))
+(mmdc (or ob-mermaid-cli-path
+        (executable-find "mmdc")
+        (error "`ob-mermaid-cli-path' is not set and mmdc is not in `exec-path'")))
+#+end_src
+arrange the command line argument variable name =cmd=
+idiom
+: concat (shell-quote-argument expand-file-name mmdc)
+then also concat the various other stuff...
+(i guess we're not using the ~shell-quote-argument~ posix argument stuff.)
+#+begin_src elisp
+(cmd (concat (shell-quote-argument (expand-file-name mmdc))
+    " -i " (org-babel-process-file-name temp-file)
+    " -o " (org-babel-process-file-name out-file)
+    (when theme (concat " -t " theme))
+    (when background-color (concat " -b " background-color))
+    (when width (concat " -w " width))
+    (when height (concat " -H " height))
+    (when mermaid-config-file (concat " -c " (org-babel-process-file-name mermaid-config-file)))
+    (when css-file (concat " -C " (org-babel-process-file-name css-file)))
+    (when pupeteer-config-file (concat " -p " (org-babel-process-file-name pupeteer-config-file)))
+  )))
+#+end_src
+okay, the ~let*~ is over. now, actually execute.
+- ~unless~ checks if mmdc is actually executable by the user.
+- in a temp file, insert the content of the body code.
+- display that we're executing a command.
+- then, execute that command on ~org-babel-eval~`
+#+NAME: mmActuallyExecute
+#+begin_src elisp
+(unless (file-executable-p mmdc)
+    ;; cannot happen with `executable-find', so we complain about
+    ;; `ob-mermaid-cli-path'
+    (error "Cannot find or execute %s, please check `ob-mermaid-cli-path'" mmdc))
+(with-temp-file temp-file (insert body))
+(message "%s" cmd)
+(org-babel-eval cmd "")
+nil))
+#+end_src
+#+NAME: mmPostlude
+#+begin_src elisp
+(provide 'ob-mermaid)
+;;; ob-mermaid.el ends here
+#+end_src
+* General Steps
+- Set Default Header Args
+- Set CLI Path executable variable.
+- =let*=
+  - translate header arguments to exec flags
+  - point to any config files
+  - define =temp-file=
+  - point to any executables
+  - arrange the CLI =cmd=
+- actually execute the thing.
+- provide the package.
+* Dissecting =ob-plantuml.el=
+[[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-plantuml.html][Documentation for ob-plantuml]]
+#+NAME: plRequirements
+#+begin_src elisp
+;;; Requirements:
+;; plantuml     | https://plantuml.com/
+;; plantuml.jar | `org-plantuml-jar-path' should point to the jar file (when exec mode is `jar')
+
+;;; Code:
+(require 'org-macs)
+(org-assert-version)
+
+(require 'ob)
+#+end_src
+#+NAME: plDefaults
+#+begin_src elisp
+(defvar org-babel-default-header-args:plantuml
+  '((:results . "file") (:exports . "results"))
+  "Default arguments for evaluating a plantuml source block.")
+
+(defcustom org-plantuml-jar-path ""
+  "Path to the plantuml.jar file."
+  :group 'org-babel
+  :version "24.1"
+  :type 'string)
+
+(defcustom org-plantuml-exec-mode 'jar
+  "Method to use for PlantUML diagram generation.
+`jar' means to use java together with the JAR.
+The JAR can be configured via `org-plantuml-jar-path'.
+
+`plantuml' means to use the PlantUML executable.
+The executable can be configured via `org-plantuml-executable-path'.
+You can also configure extra arguments via `org-plantuml-executable-args'."
+  :group 'org-babel
+  :package-version '(Org . "9.4")
+  :type 'symbol
+  :options '(jar plantuml))
+
+(defcustom org-plantuml-executable-path "plantuml"
+  "File name of the PlantUML executable."
+  :group 'org-babel
+  :package-version '(Org . "9.4")
+  :type 'string)
+
+(defcustom org-plantuml-args (list "-headless")
+  "The arguments passed to plantuml when executing PlantUML."
+  :group 'org-babel
+  :package-version '(Org . "9.4")
+  :type '(repeat string))
+
+(defcustom org-babel-plantuml-svg-text-to-path nil
+  "When non-nil, export text in SVG images to paths using Inkscape."
+  :group 'org-babel
+  :package-version '(Org . "9.5")
+  :type 'boolean)
+#+end_src
+variable assignments
+#+begin_src elisp
+(defun org-babel-variable-assignments:plantuml (params)
+  "Return a list of PlantUML statements assigning the block's variables.
+PARAMS is a property list of source block parameters, which may
+contain multiple entries for the key `:var'.  `:var' entries in PARAMS
+are expected to be scalar variables."
+  (mapcar
+   (lambda (pair)
+     (format "!define %s %s"
+	     (car pair)
+	     (replace-regexp-in-string "\"" "" (cdr pair))))
+   (org-babel--get-vars params)))
+#+end_src
+
+#+begin_src elisp
+(defun org-babel-plantuml-make-body (body params)
+  "Return PlantUML input string.
+
+BODY is the content of the source block and PARAMS is a property list
+of source block parameters.  This function relies on the
+`org-babel-expand-body:generic' function to extract `:var' entries
+from PARAMS and on the `org-babel-variable-assignments:plantuml'
+function to convert variables to PlantUML assignments.
+
+If BODY does not contain @startXXX ... @endXXX clauses, @startuml
+... @enduml will be added."
+  (let ((full-body
+	 (org-babel-expand-body:generic
+	  body params (org-babel-variable-assignments:plantuml params))))
+    (if (string-prefix-p "@start" body t) full-body
+      (format "@startuml\n%s\n@enduml" full-body))))
+#+end_src
+bluh
+#+begin_src elisp
+(defun org-babel-execute:plantuml (body params)
+  "Execute a block of plantuml code with org-babel.
+This function is called by `org-babel-execute-src-block'."
+  (let* ((do-export (member "file" (cdr (assq :result-params params))))
+         (out-file (if do-export
+                       (or (cdr (assq :file params))
+                           (error "No :file provided but :results set to file. For plain text output, set :results to verbatim"))
+		     (org-babel-temp-file "plantuml-" ".txt")))
+	 (cmdline (cdr (assq :cmdline params)))
+	 (in-file (org-babel-temp-file "plantuml-"))
+	 (java (or (cdr (assq :java params)) ""))
+	 (executable (cond ((eq org-plantuml-exec-mode 'plantuml) org-plantuml-executable-path)
+			   (t "java")))
+	 (executable-args (cond ((eq org-plantuml-exec-mode 'plantuml) org-plantuml-args)
+				((string= "" org-plantuml-jar-path)
+				 (error "`org-plantuml-jar-path' is not set"))
+				((not (file-exists-p org-plantuml-jar-path))
+				 (error "Could not find plantuml.jar at %s" org-plantuml-jar-path))
+				(t `(,java
+				     "-jar"
+				     ,(shell-quote-argument (expand-file-name org-plantuml-jar-path))
+                                     ,@org-plantuml-args))))
+	 (full-body (org-babel-plantuml-make-body body params))
+	 (cmd (mapconcat #'identity
+			 (append
+			  (list executable)
+			  executable-args
+			  (pcase (file-name-extension out-file)
+			    ("png" '("-tpng"))
+			    ("svg" '("-tsvg"))
+			    ("eps" '("-teps"))
+			    ("pdf" '("-tpdf"))
+			    ("tex" '("-tlatex"))
+			    ("vdx" '("-tvdx"))
+			    ("xmi" '("-txmi"))
+			    ("scxml" '("-tscxml"))
+			    ("html" '("-thtml"))
+			    ("txt" '("-ttxt"))
+			    ("utxt" '("-utxt")))
+			  (list
+			   "-p"
+			   cmdline
+			   "<"
+			   (org-babel-process-file-name in-file)
+			   ">"
+			   (org-babel-process-file-name out-file)))
+			 " ")))
+    (with-temp-file in-file (insert full-body))
+    (message "%s" cmd) (org-babel-eval cmd "")
+    (if (and (string= (file-name-extension out-file) "svg")
+             org-babel-plantuml-svg-text-to-path)
+        (org-babel-eval (format "inkscape %s -T -l %s" out-file out-file) ""))
+    (unless do-export (with-temp-buffer
+                        (insert-file-contents out-file)
+                        (buffer-substring-no-properties
+                         (point-min) (point-max))))))
+#+end_src
+- babel execute =C-c=
+
+#+begin_src elisp
+(defun org-babel-prep-session:plantuml (_session _params)
+  "Return an error because plantuml does not support sessions."
+  (error "Plantuml does not support sessions"))
+
+(provide 'ob-plantuml)
+
+;;; ob-plantuml.el ends here
+#+end_src
+Prepare session
+provide package

@@ -1,0 +1,338 @@
+#+title: My First Penrose
+#+eval: penrose-modes.el
+* Tutorial 1: Set Theory of Two Sets
+#+begin_src penrose-dsl :tangle set_theory.domain
+type Set
+#+end_src
+
+#+NAME: my_example_style
+#+begin_src penrose-style :tangle set_theory.style
+canvas {
+width = 100
+height = 100
+}
+
+forall Set x {
+  x.icon = Circle {
+    strokeWidth : 0.0
+  }
+}
+#+end_src
+
+#+begin_src penrose-substance :tangle set_theory.substance :domain bluh :style bluh
+Set A
+Set B
+#+end_src
+* Tutorial 2: Predicates and Constraints
+* Tutorial 3: Functions
+* Self Guided Example: Hamiltonian Cycle
+
+#+NAME: cities.lp
+#+begin_src prolog cities.lp
+start(a).
+vertex(a). vertex(b). vertex(c). vertex(d).
+arc(a,b,10). arc(b,c,20). arc(c,d,25). arc(d,a,40).
+arc(b,d,30). arc(d,c,25). arc(c,a,35).
+#+end_src
+
+#+NAME: tsp.lp
+#+begin_src prolog cities.lp
+{ travel(X, Y)  } :- arc(X,Y,_).
+
+visited(Y) :- travel(X,Y), start(X).
+visited(Y) :- travel(X,Y), visited(X).
+
+% Must visit every vertex
+:- vertex(X), not visited(X).
+
+% Cannot leave nor arrive at a vertex twice.
+:- vertex(X), 2 { travel(X,Y) }.
+:- vertex(X), 2 { travel(Y,X) }.
+
+% This is the only difference between Hamiltonian vs. TSP
+#minimize { D,X,Y : travel(X,Y), arc(X,Y,D) }.
+#+end_src
+
+#+NAME: Solution
+#+begin_example
+> clingo tsp.lp cities.lp
+
+Answer: 2
+start(a) [...] arc(c,a,35)
+travel(a,b) travel(b,c) travel(c,d) travel(d,a)
+visited(b) visited(c) visited(d) visited(a)
+Optimization: 95
+#+end_example
+
+-----
+
+#+NAME: HamiltonianDomain
+#+begin_src domain
+type Vertex
+predicate Arc(Vertex a, Vertex b)
+predicate HighlightVertex(Vertex a)
+predicate HighlightArc(Vertex a, Vertex b)
+#+end_src
+
+#+NAME: HamiltonianStyle
+#+begin_src style
+canvas {
+  width = 400
+  height = 400
+}
+
+layout = [dots, arrows, text]
+
+color {
+  black = #000000
+  white = #ffffff
+  redOrange = #FE4A49
+}
+
+num {
+  radius = 5
+  labelDist = 5
+  edgeDist = 100
+  repelDist = 1.5 * edgeDist
+  offset = 10
+  loopRadius = 15
+  pointerX = 6
+  pointerY = 4
+}
+
+forall Vertex v {
+  v.dot = Circle {
+    center: (? in dots, ? in dots)
+    r: num.radius
+    fillColor : color.black
+  }
+
+  v.text = Text {
+    string: v.label
+    fillColor: color.black
+    fontFamily: "serif"
+    fontSize: "18px"
+    strokeColor: color.white
+    strokeWidth: 4
+    paintOrder: "stroke"
+  }
+  v.halfSize = (v.text.width / 2, v.text.height / 2)
+  v.bottomLeft = v.text.center - v.halfSize
+  v.topRight = v.text.center + v.halfSize
+
+  v.text above v.dot
+
+  encourage shapeDistance(v.dot, v.text) == num.labelDist in text
+}
+
+forall Vertex u; Vertex v {
+  d = vdist(u.dot.center, v.dot.center)
+  dHat = num.repelDist
+  -- equation 6 from https://ipc-sim.github.io/
+  encourage minimal(max(0, -sqr(d - dHat) * log(d / dHat))) in dots
+
+  ensure disjoint(u.text, v.text, num.labelDist) in text
+}
+
+forall Vertex u; Vertex v where Arc(u, v) as e {
+  a = u.dot.center
+  b = v.dot.center
+  t = normalize(b - a) -- tangent
+  n = rot90(t) -- normal
+  m = (a + b) / 2 -- midpoint
+
+  e.start = a
+  e.end = b
+  e.offset = ? in dots
+  e.arrow = Path {
+    d: quadraticCurveFromPoints("open", [a, m + e.offset * n, b])
+    strokeColor: color.black
+  }
+
+  e.step = ? in arrows
+  e.pointerCenter = m + (e.offset / 2) * n + e.step * t
+  p = e.pointerCenter
+  x = num.pointerX
+  y = num.pointerY
+  e.pointer = Path {
+    d: pathFromPoints("closed", [p - x * t + y * n, p + x * t, p - x * t - y * n])
+    strokeColor: none()
+    fillColor: color.black
+  }
+
+  e.arrow below u.dot
+  e.arrow below v.dot
+  e.pointer below e.arrow
+
+  encourage vdist(u.dot.center, v.dot.center) < num.edgeDist in dots
+  encourage minimal(sqr(e.offset)) in dots
+  encourage minimal(sqr(e.step))
+}
+
+forall Vertex u; Vertex v where Arc(u, v) as e1; Arc(u, v) as e2 {
+  ensure abs(e2.offset - e1.offset) > 2 * num.offset in dots
+}
+
+forall Vertex u; Vertex v where Arc(u, v) as e1; Arc(v, u) as e2 {
+  ensure abs(e1.offset + e2.offset) > 2 * num.offset in dots
+}
+
+forall Vertex u; Vertex v where Arc(u, v) as e; u has label {
+  encourage maximal(min(num.labelDist, rectLineDist(u.bottomLeft, u.topRight, e.start, e.end))) in text
+}
+
+forall Vertex u; Vertex v where Arc(u, v) as e; v has label {
+  encourage maximal(min(num.labelDist, rectLineDist(v.bottomLeft, v.topRight, e.start, e.end))) in text
+}
+
+forall Vertex u; Vertex v; Vertex w where Arc(u, v) as e; w has label {
+  encourage maximal(min(num.labelDist, rectLineDist(w.bottomLeft, w.topRight, e.start, e.end))) in text
+}
+
+forall Vertex a, b, c, d where Arc(a, b) as e1; Arc(c, d) as e2 {
+  ensure norm(e2.pointerCenter - e1.pointerCenter) > max(num.pointerX, num.pointerY)*3 in arrows
+  encourage e1.step == e2.step
+}
+
+forall Vertex v where HighlightVertex(v) {
+    override v.dot.fillColor = color.redOrange
+    override v.text.fillColor = color.redOrange
+}
+
+forall Vertex a, b where Arc(a,b) as e; HighlightArc(a,b) {
+    override e.arrow.strokeColor = color.redOrange
+    override e.pointer.fillColor = color.redOrange
+}
+#+end_src
+
+#+NAME: HamiltonianSubstance
+#+begin_src substance
+-- The seven vertices are a, b, c, d, e, f, g
+Vertex a, b, c, d, e, f, g
+
+-- The Hamiltonian cycle is a -> b -> c -> d -> e -> f -> g -> a
+Arc(a, b)
+Arc(b, c)
+Arc(c, d)
+Arc(d, e)
+Arc(e, f)
+Arc(f, g)
+Arc(g, a)
+
+-- Highlight the start/end vertex and arcs in the cycle
+HighlightVertex(a)
+
+HighlightArc(a, b)
+HighlightArc(b, c)
+HighlightArc(c, d)
+HighlightArc(d, e)
+HighlightArc(e, f)
+HighlightArc(f, g)
+HighlightArc(g, a)
+
+-- Additional edges that are not in the Hamiltonian cycle
+Arc(a, c)
+Arc(a, d)
+Arc(b, e)
+Arc(b, f)
+Arc(c, g)
+Arc(d, f)
+
+AutoLabel All
+#+end_src
+* Commentary on Logic x Penrose
+Neither Domain nor Substance have any actual numbers.
+Style aims to be as generic as possible as well, but you can constrain /start/ and /end/.
+I think it can be constrained so as to fit exactly specific graphs. I started out by replacing city > vertex; road > arc.
+
++ DOMAIN
+  - type Vertex/1 :: vertex/1 in *instance*
+  - predicate Arc/2 :: arc/3 in *instance*
+  - predicate HighlightVertex/1 :: start/1  from *instance*? +or visited/1 from *encoding*?+
+  - predicate HighlightArc/2 ::  travel/2 in *encoding*
++ STYLE
+  - Standard stuffs
+    - canvas :: standard.
+    - layout :: collector block :: *This seems important*
+    - color :: enums
+    - num :: const style values.
+  - forall Vertex v :: draw a point. :: vertex/1 in *instance*
+    - dot :: =? in dots= is interesting... what is that?
+    - text
+    - halfsize
+    - bottomleft
+    - topright
+    - constraints :: influences length of distance??? :: N/A
+  - forall Vertex u; Vertex v :: prevent overlapping points :: *N/A*
+  - forall Vertex u; Vertex v where Arc(u,v) as e :: arc/3 in *instance*
+    - tangent, normal, midpoint :: N/A
+    - arrow :: start, end, offset, arrow :: *N/A*
+    - various calculations.
+    - constraints.
+  - forall Vertex u; Vertex v where Arc(u, v) as e1; Arc(u, v) as e2 :: constraint on layout.dots :: *N/A*
+    - forall Vertex u; Vertex v where Arc(u, v) as e1; Arc(v, u) as e2 :: constraint on layout.dots :: *N/A*
+  - forall Vertex u; Vertex v where Arc(u, v) as e; u has label :: ??? :: *N/A*
+    - forall Vertex u; Vertex v where Arc(u, v) as e; v has label :: ??? :: *N/A*
+    - forall Vertex u; Vertex v; Vertex w where Arc(u, v) as e; w has label  :: ??? :: *N/A*
+  - forall Vertex a, b, c, d where Arc(a, b) as e1; Arc(c, d) as e2 :: ??? :: *N/A*
+  - forall Vertex v where HighlightVertex(v) :: highlight the start of the path :: start/1
+  - forall Vertex a, b where Arc(a,b) as e; HighlightArc(a,b) :: highlight the hamiltonian :: travel/2 from *encoding*
++ SUBSTANCE
+  - Vertex/1 :: Every atom in *instance* has been grounded.
+  - Arc/2 :: arc/3 in *instance*, minus /Distance/
+  - HighlightVertex/1 :: start/1 in *instance*
+  - HighlightArc/2 ::  Grounded atoms are from *solution*
++ Findings
+  - visited/1  is not used at all in Penrose, but is crucial for identifying solutions.
+  - Penrose needs you to have the solution already.
+  - Domain and Substance can be largely determined by prolog/asp.
+  - non-mapped elements from ASP:
+    - Distance in arc/3 (any numerics, really)
+    - Integrity Constraints...?
+    - Minimize Constraint.
+  - Non-mapped elements from Penrose
+    - anything mapping Symbolic to Visual.
+    - Penrose defaults to /not/ conveying the semantic quality of anything if it can, because that's the point of making a variety.
+  - Considerations
+    - Spatial Distinctions need to be taken into consideration when constructing ASP/Penrose.
+    - proximity. containment. disjoint, size, color, distinction are some of the key ones to consider.
+  - Confusions
+    - What the heck is =layout = [dots, arrows, text]=?
+  - Manual Work isn't so difficult.
+* COMMENT Implementation Ideas for =ob-penrose=
+** Header Args
+- Named Entity in Org Buffer
+: :style my_first_penrose.org:my_example_style
+- Named Entity
+: :style my_example_style
+- File
+: :style set_theory.style
+- Built-In
+: :style set_theory
+
+
+Variations are identified based on Phrases FooBar1235.
+: :seed FooBar1235
+: :seed (FooBar1235, Owo1234, Uwu1235)
+- Outputs 3?
+** Workflow
+- =substance= is the key block. The others exist only to be either: tangled; or consumed
+- C-c should work on =substance= mainly.
+- Maybe Domain and Style components could be based on Org Tags, Property Drawers, Tables...?
+** Tangling
+- I feel like a =penrose= block should be able to automatically export something into its components, if the code blocks are mutually exclusive. That way they could also all be in the same code block. Maybe inheriting from an existing definition as well?
+
+- We can use a Session so that multiple code blocks can contribute, and we have more local definitions
+e.g.
+defining domain/style/substance of Set and Intersecting here
+blah blah...
+
+then define style/substance of intersecting here
+so that we combine previous Domain, Style, and maybe substance.
+
+canvas is shared across one single session.
+** Compilation
+- A minibuffer should exist that showcases a wide range of resamples, with an interactive menu that selects the preferred diagram.
+- The option for =results N random/sample= should exist, so as to showcase several different options, either dynamically (at random) or statically (choose N samples)
+** Config of Styles, Domains
+- The data seems to match well with Alist / Emacs Vectors.

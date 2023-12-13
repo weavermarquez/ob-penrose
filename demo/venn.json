@@ -1,0 +1,6 @@
+{
+  "substance": "./venn.substance",
+  "style": ["./venn.style", "./venn2.style"],
+  "domain": "./venn.domain",
+  "variation": "PlumvilleCapybara104"
+}

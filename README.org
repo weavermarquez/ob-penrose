@@ -62,6 +62,7 @@ AutoLabel All
 - Draw Inspiration from
   - =org-download=
   - =ob-plantuml=
+  - =ob-lilypad= arrange mode
 - Variables for automatic SVG size / resizing inside org buffer
 - Option to transform to PNG
 - Integrate penrose emacs modes for writing.

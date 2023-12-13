@@ -1,3 +1,15 @@
+*.bbl
+*.synctex.gz
+*.aux
+*.out
+*.log
+*.tex
+*.pyg
+*/_minted-*
+*.original
+*.elc
+
+
 # Logs
 logs
 *.log
